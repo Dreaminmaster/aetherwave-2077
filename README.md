@@ -1,4 +1,4 @@
-# Worldwave Radio
+# Worldwave Radio 2077
 
 <p align="center">
   <strong>A cinematic cyberpunk web radio experience for exploring live stations around the world.</strong>
@@ -15,14 +15,14 @@
 </p>
 
 <p align="center">
-  <img src="./assets/preview.svg" alt="Worldwave Radio interface preview" width="900">
+  <img src="./assets/preview.svg" alt="Worldwave Radio 2077 interface preview" width="900">
 </p>
 
 ---
 
 ## About
 
-**Worldwave Radio** is not just a radio player.
+**Worldwave Radio 2077** is not just a radio player.
 
 It is a small atmospheric web interface for tuning into distant live signals from different countries, wrapped in a cyberpunk-inspired console experience. The project combines global online radio streams with a fictional hardware-like control panel, including a power-on screen, country selector, station list, tuning slider, preset buttons, mechanical click sounds, signal noise, and a CRT-style oscilloscope visualizer.
 
@@ -50,7 +50,7 @@ The goal is to make listening feel like operating an old machine from a future t
 
 Most radio websites are built as clean lists.
 
-Worldwave Radio takes a different direction. It treats radio as an experience: power on the machine, scan through distant signals, hear static, choose a station, and watch the waveform move.
+Worldwave Radio 2077 takes a different direction. It treats radio as an experience: power on the machine, scan through distant signals, hear static, choose a station, and watch the waveform move.
 
 This project is designed as a portfolio piece, interface experiment, and non-commercial demonstration of visual interaction design.
 
