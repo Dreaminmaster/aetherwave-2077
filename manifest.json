@@ -1,0 +1,11 @@
+{
+  "name": "Aetherwave 2077",
+  "short_name": "Aetherwave",
+  "description": "A cinematic cyberpunk web radio experience for exploring live stations around the world.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f0f10",
+  "theme_color": "#1a1a1a",
+  "orientation": "portrait",
+  "icons": []
+}
