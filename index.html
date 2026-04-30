@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#1a1a1a" />
-  <title>Aetherwave 2077</title>
+  <title>Worldwave Radio 2077</title>
   <link rel="manifest" href="manifest.json" />
   <style>
     :root{--bg-metal:#1a1a1b;--bg-dark:#0f0f10;--accent-orange:#ff702e;--accent-green:#00ff41;--shadow-inset:inset 2px 2px 5px rgba(0,0,0,.7),inset -1px -1px 2px rgba(255,255,255,.1);--shadow-out:5px 5px 10px rgba(0,0,0,.6),-2px -2px 5px rgba(255,255,255,.05)}
@@ -12,8 +12,8 @@
   </style>
 </head>
 <body>
-  <div id="power-overlay"><div class="power-btn" onclick="powerOn()">⏻ POWER ON</div><p style="margin-top:20px;font-size:12px;opacity:.6">AETHERWAVE 2077 SYSTEM</p></div>
-  <div class="header"><div style="color:var(--accent-green)">AETHERWAVE // <span id="clock">00:00</span></div><select id="country-select" onchange="changeCountry()"><option value="China">China</option><option value="United States">USA</option><option value="Japan">Japan</option><option value="United Kingdom">UK</option><option value="Russia">Russia</option></select></div>
+  <div id="power-overlay"><div class="power-btn" onclick="powerOn()">⏻ POWER ON</div><p style="margin-top:20px;font-size:12px;opacity:.6">WORLDWAVE RADIO 2077 SYSTEM</p></div>
+  <div class="header"><div style="color:var(--accent-green)">WORLDWAVE RADIO 2077 // <span id="clock">00:00</span></div><select id="country-select" onchange="changeCountry()"><option value="China">China</option><option value="United States">USA</option><option value="Japan">Japan</option><option value="United Kingdom">UK</option><option value="Russia">Russia</option></select></div>
   <div class="main-display"><div class="channel-list" id="station-list"><div style="padding:10px;text-align:center">INITIALIZING...</div></div><div class="oscilloscope"><div class="crt-overlay"></div><canvas id="visualizer"></canvas></div></div>
   <div class="control-deck"><div class="presets"><button class="preset-btn" onclick="handlePreset(0)">1</button><button class="preset-btn" onclick="handlePreset(1)">2</button><button class="preset-btn" onclick="handlePreset(2)">3</button><button class="preset-btn" onclick="handlePreset(3)">4</button><button class="preset-btn" onclick="handlePreset(4)">5</button></div><div class="tuner-container"><div class="freq-display"><span id="freq-text">87.5</span> MHz</div><input type="range" id="tuner" min="875" max="1080" value="875" oninput="onTuning()" onchange="onTuneRelease()"></div><div class="knob-section"><div class="knob-wrapper"><div class="knob" id="vol-knob" style="transform:rotate(-135deg)"></div><span class="knob-label">VOLUME</span></div><div class="knob-wrapper"><div class="knob" id="fine-knob" style="transform:rotate(0deg)"></div><span class="knob-label">FINE TUNE</span></div></div></div>
   <div class="signature">/by @Dreaminmaster</div>
