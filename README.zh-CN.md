@@ -1,4 +1,4 @@
-# Aetherwave 2077 中文说明
+# Worldwave Radio 2077 中文说明
 
 <p align="center">
   <strong>一个赛博复古风格的全球网络收音机体验页面。</strong>
@@ -9,14 +9,14 @@
 </p>
 
 <p align="center">
-  <img src="./assets/preview.svg" alt="Aetherwave 2077 页面预览" width="900">
+  <img src="./assets/preview.svg" alt="Worldwave Radio 2077 页面预览" width="900">
 </p>
 
 ---
 
 ## 项目简介
 
-**Aetherwave 2077** 不只是一个普通的收音机播放器。
+**Worldwave Radio 2077** 不只是一个普通的收音机播放器。
 
 它把全球网络电台包装成了一个带有仪式感的赛博复古控制台：开机界面、国家切换、电台列表、调频滑块、预设按钮、机械点击音、白噪声、CRT 扫描线和示波器视觉效果，共同组成了一个更像“未来旧机器”的网页体验。
 
