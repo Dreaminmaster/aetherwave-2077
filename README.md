@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="./assets/worldwave-radio-2077-preview.svg" alt="Worldwave Radio 2077 interface preview" width="900">
+  <img src="./assets/worldwave-radio-2077-mobile-preview.svg" alt="Worldwave Radio 2077 mobile interface preview" width="360">
 </p>
 
 ---
