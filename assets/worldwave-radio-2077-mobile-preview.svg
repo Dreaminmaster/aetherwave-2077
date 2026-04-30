@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="430" height="932" viewBox="0 0 430 932" role="img" aria-label="Worldwave Radio 2077 mobile interface preview">
+  <title>Worldwave Radio 2077 Mobile Preview</title>
+  <defs>
+    <radialGradient id="phoneBg" cx="50%" cy="8%" r="95%">
+      <stop offset="0" stop-color="#303034"/>
+      <stop offset="0.5" stop-color="#161617"/>
+      <stop offset="1" stop-color="#070708"/>
+    </radialGradient>
+    <linearGradient id="deck" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2a2a"/>
+      <stop offset="1" stop-color="#181818"/>
+    </linearGradient>
+    <filter id="greenGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="orangeGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse">
+      <rect width="4" height="2" fill="rgba(255,255,255,0.035)"/>
+      <rect y="2" width="4" height="2" fill="rgba(0,0,0,0.2)"/>
+    </pattern>
+  </defs>
+
+  <rect width="430" height="932" rx="44" fill="#0b0b0c"/>
+  <rect x="14" y="14" width="402" height="904" rx="38" fill="url(#phoneBg)" stroke="#202023"/>
+
+  <text x="40" y="56" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="17" font-weight="700" fill="#f5f5f7">19:40</text>
+  <rect x="186" y="26" width="58" height="18" rx="9" fill="#050506" opacity="0.88"/>
+  <text x="352" y="56" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="15" fill="#f5f5f7">5G</text>
+  <rect x="381" y="42" width="24" height="13" rx="4" fill="none" stroke="#f5f5f7" stroke-width="2"/>
+  <rect x="406" y="46" width="2" height="5" rx="1" fill="#f5f5f7"/>
+  <rect x="384" y="45" width="16" height="7" rx="2" fill="#f5f5f7"/>
+
+  <g transform="translate(31 96)">
+    <rect width="368" height="690" rx="24" fill="#1a1a1b" stroke="#343436"/>
+    <rect width="368" height="54" rx="24" fill="#111"/>
+    <rect y="30" width="368" height="24" fill="#111"/>
+    <text x="22" y="34" font-family="Courier New, monospace" font-size="15" fill="#00ff41" filter="url(#greenGlow)">AETHERWAVE // 19:40</text>
+    <rect x="296" y="16" width="48" height="20" rx="3" fill="#0d0d0e" stroke="#333"/>
+    <text x="307" y="31" font-family="Courier New, monospace" font-size="11" fill="#00ff41">China</text>
+
+    <rect x="22" y="74" width="324" height="172" rx="10" fill="#0f0f10" stroke="#242426"/>
+    <text x="36" y="101" font-family="Courier New, monospace" font-size="12" fill="#ff702e" filter="url(#orangeGlow)">87.5 FM - China National Radio</text>
+    <line x1="36" y1="116" x2="324" y2="116" stroke="#333" stroke-dasharray="4 5"/>
+    <text x="36" y="138" font-family="Courier New, monospace" font-size="12" fill="#888">88.5 FM - Hit Music Channel</text>
+    <line x1="36" y1="153" x2="324" y2="153" stroke="#333" stroke-dasharray="4 5"/>
+    <text x="36" y="175" font-family="Courier New, monospace" font-size="12" fill="#888">89.5 FM - Global News Radio</text>
+    <line x1="36" y1="190" x2="324" y2="190" stroke="#333" stroke-dasharray="4 5"/>
+    <text x="36" y="212" font-family="Courier New, monospace" font-size="12" fill="#888">90.5 FM - City Night Waves</text>
+
+    <rect x="22" y="268" width="324" height="172" rx="14" fill="#020202" stroke="#333" stroke-width="3"/>
+    <rect x="22" y="268" width="324" height="172" rx="14" fill="url(#scan)" opacity="0.72"/>
+    <text x="42" y="294" font-family="Courier New, monospace" font-size="12" fill="#00ff41" opacity="0.75">SIGNAL VISUALIZER</text>
+    <path d="M38 356 C74 324,98 391,128 356 S187 315,218 356 S278 394,330 346" fill="none" stroke="#00ff41" stroke-width="3" filter="url(#greenGlow)"/>
+    <path d="M38 372 C85 360,124 375,170 368 S252 357,330 365" fill="none" stroke="#00ff41" stroke-width="1.5" opacity="0.45"/>
+
+    <rect x="0" y="464" width="368" height="226" fill="url(#deck)" stroke="#404040"/>
+    <circle cx="111" cy="510" r="17" fill="#333" stroke="#111" stroke-width="2"/>
+    <text x="106" y="516" font-family="Courier New, monospace" font-size="16" fill="#ff702e">1</text>
+    <circle cx="154" cy="510" r="17" fill="#333" stroke="#111" stroke-width="2"/>
+    <text x="149" y="516" font-family="Courier New, monospace" font-size="16" fill="#777">2</text>
+    <circle cx="197" cy="510" r="17" fill="#333" stroke="#111" stroke-width="2"/>
+    <text x="192" y="516" font-family="Courier New, monospace" font-size="16" fill="#777">3</text>
+    <circle cx="240" cy="510" r="17" fill="#333" stroke="#111" stroke-width="2"/>
+    <text x="235" y="516" font-family="Courier New, monospace" font-size="16" fill="#777">4</text>
+    <circle cx="283" cy="510" r="17" fill="#333" stroke="#111" stroke-width="2"/>
+    <text x="278" y="516" font-family="Courier New, monospace" font-size="16" fill="#777">5</text>
+
+    <text x="184" y="568" text-anchor="middle" font-family="Courier New, monospace" font-size="24" fill="#ff702e" filter="url(#orangeGlow)">87.5 MHz</text>
+    <rect x="64" y="594" width="240" height="12" rx="6" fill="#0d0d0e" stroke="#39393a"/>
+    <rect x="68" y="598" width="76" height="4" rx="2" fill="#ff702e" opacity="0.6"/>
+    <rect x="136" y="584" width="16" height="34" rx="3" fill="#888" stroke="#111"/>
+
+    <circle cx="70" cy="638" r="30" fill="#202020" stroke="#333" stroke-width="3"/>
+    <rect x="67" y="610" width="6" height="22" rx="3" fill="#ff702e" filter="url(#orangeGlow)"/>
+    <text x="70" y="682" text-anchor="middle" font-family="Courier New, monospace" font-size="10" fill="#777">VOLUME</text>
+
+    <circle cx="298" cy="638" r="30" fill="#202020" stroke="#333" stroke-width="3"/>
+    <rect x="295" y="610" width="6" height="22" rx="3" fill="#ff702e" filter="url(#orangeGlow)"/>
+    <text x="298" y="682" text-anchor="middle" font-family="Courier New, monospace" font-size="10" fill="#777">FINE TUNE</text>
+    <text x="342" y="674" text-anchor="end" font-family="Courier New, monospace" font-size="9" fill="#555">/by @Dreaminmaster</text>
+  </g>
+
+  <text x="215" y="832" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="19" font-weight="700" fill="#f5f5f7">Worldwave Radio 2077</text>
+  <text x="215" y="862" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="13" fill="#9c9ca1">mobile preview · cyberpunk global radio</text>
+  <rect x="145" y="892" width="140" height="5" rx="3" fill="#f5f5f7" opacity="0.9"/>
+</svg>
