@@ -1,6 +1,6 @@
 {
-  "name": "Worldwave Radio 2077",
-  "short_name": "Worldwave",
+  "name": "Aetherwave 2077",
+  "short_name": "Aetherwave",
   "description": "A cinematic cyberpunk web radio experience for exploring live stations around the world.",
   "start_url": "./index.html",
   "display": "standalone",
