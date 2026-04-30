@@ -1,4 +1,4 @@
-# Worldwave Radio 2077
+## Worldwave Radio 2077
 
 <p align="center">
   <strong>A cinematic cyberpunk web radio experience for exploring live stations around the world.</strong>
@@ -15,12 +15,12 @@
 </p>
 
 <p align="center">
-  <img src="./assets/preview.svg" alt="Worldwave Radio 2077 interface preview" width="900">
+  <img src="./assets/worldwave-radio-2077-preview.svg" alt="Worldwave Radio 2077 interface preview" width="900">
 </p>
 
 ---
 
-## About
+### About
 
 **Worldwave Radio 2077** is not just a radio player.
 
@@ -30,7 +30,7 @@ The goal is to make listening feel like operating an old machine from a future t
 
 ---
 
-## Features
+### Features
 
 - Global live radio station discovery
 - Cyberpunk-inspired radio console interface
@@ -46,7 +46,7 @@ The goal is to make listening feel like operating an old machine from a future t
 
 ---
 
-## Project Concept
+### Project Concept
 
 Most radio websites are built as clean lists.
 
@@ -56,7 +56,7 @@ This project is designed as a portfolio piece, interface experiment, and non-com
 
 ---
 
-## Tech Stack
+### Tech Stack
 
 - HTML
 - CSS
@@ -69,7 +69,7 @@ No frontend framework is required.
 
 ---
 
-## How to Run
+### How to Run
 
 Clone the repository:
 
@@ -94,15 +94,15 @@ http://localhost:8080
 
 ---
 
-## Notes
+### Notes
 
 Some radio streams may fail to play because of stream availability, regional restrictions, HTTPS rules, or cross-origin limitations. This is normal for public internet radio sources and does not necessarily indicate a problem with the interface itself.
 
-The current version keeps the original prototype logic and focuses on presentation, atmosphere, and project packaging.
+The source page is kept as the original prototype. This repository packaging focuses on presentation, preview, and non-commercial project documentation.
 
 ---
 
-## Usage Restriction
+### Usage Restriction
 
 This project is for **personal viewing, learning reference, portfolio display, and non-commercial demonstration only**.
 
@@ -112,7 +112,7 @@ See [LICENSE](./LICENSE) for details.
 
 ---
 
-## Author
+### Author
 
 Created by **Dreaminmaster**.
 
