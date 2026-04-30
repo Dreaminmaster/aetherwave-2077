@@ -54,9 +54,9 @@
     <rect x="230" y="0" width="190" height="330" rx="10" fill="#041907" stroke="#333" stroke-width="2" filter="url(#shadow)"/>
     <rect x="232" y="2" width="186" height="326" rx="9" fill="url(#scan)"/>
     <rect x="232" y="2" width="186" height="326" rx="9" fill="#00ff41" opacity="0.12"/>
-    <path d="M232 165 L418 165" stroke="#00ff41" stroke-width="4" opacity="0.95" filter="url(#greenGlow)"/>
-    <path d="M232 158 L418 158" stroke="#00ff41" stroke-width="1.5" opacity="0.5"/>
-    <path d="M232 172 L418 172" stroke="#00ff41" stroke-width="1.5" opacity="0.35"/>
+    <path d="M234 170 C260 152,276 190,300 168 S340 142,365 166 S400 197,416 160" fill="none" stroke="#00ff41" stroke-width="4" opacity="0.95" filter="url(#greenGlow)"/>
+    <path d="M234 176 C275 166,310 179,346 171 S392 162,416 170" fill="none" stroke="#00ff41" stroke-width="1.4" opacity="0.55"/>
+    <path d="M234 164 L416 164" stroke="#00ff41" stroke-width="1" opacity="0.28"/>
   </g>
 
   <rect x="0" y="414" width="430" height="1" fill="#444"/>
