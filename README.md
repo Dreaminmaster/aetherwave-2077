@@ -12,11 +12,21 @@
   <a href="./README.zh-CN.md">中文说明</a>
   ·
   <a href="./index.html">Source HTML</a>
+  ·
+  <a href="https://dreaminmaster.github.io/Worldwave-Radio-2077/">Live Demo</a>
 </p>
 
 <p align="center">
   <img src="./assets/mobile-actual-preview-v3-wave.svg" alt="Worldwave Radio 2077 actual mobile interface preview" width="300">
 </p>
+
+---
+
+### Live Demo
+
+GitHub Pages demo:
+
+**https://dreaminmaster.github.io/Worldwave-Radio-2077/**
 
 ---
 
