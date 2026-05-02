@@ -420,7 +420,8 @@
         let isPlaying = false;
         let isTuning = false;
         let streamState = 'idle';
-        let currentVolume = 1.0;   // 旋钮控制的音量 // idle | searching | playing | error
+        let currentVolume = 1.0;
+        let streamCheckInterval = null;  // 保底检测定时器 // idle | searching | playing | error
 
         const countryMap = {
             'China': 'China',
@@ -587,7 +588,8 @@
                 streamUrl = '/proxy?url=' + encodeURIComponent(streamUrl);
             }
 
-            // 停掉旧音频
+            // 停掉旧音频和定时器
+            clearInterval(streamCheckInterval);
             try { radioAudio.pause(); radioAudio.src = ''; } catch(e) {}
 
             // 搜台阶段：噪音大
@@ -648,14 +650,29 @@
                 }
             });
             radioAudio.addEventListener('stalled', () => {
-                // 给 5 秒恢复时间，之后才判定失败
+                // 给 8 秒恢复时间，之后才判定失败
                 clearTimeout(stalledTimer);
                 stalledTimer = setTimeout(() => {
-                    streamState = 'error';
-                    isPlaying = false;
-                    if (noiseGain) noiseGain.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.5);
-                }, 5000);
+                    // 即使超时也不立刻判错，让保底检测来处理
+                    if (noiseGain && streamState !== 'error') {
+                        noiseGain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 1);
+                    }
+                }, 8000);
             });
+
+            // 保底检测：每 2 秒检查一次，如果音频实际在播放就保持低噪音
+            streamCheckInterval = setInterval(() => {
+                if (!radioAudio || radioAudio.paused || radioAudio.ended) return;
+                if (radioAudio.readyState >= 3 && streamState !== 'error') {
+                    // HAVE_FUTURE_DATA 以上 = 确实在播放
+                    streamState = 'playing';
+                    isPlaying = true;
+                    if (noiseGain) {
+                        noiseGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                        noiseGain.gain.linearRampToValueAtTime(0.03, audioCtx.currentTime + 0.4);
+                    }
+                }
+            }, 2000);
 
             radioAudio.src = streamUrl;
 
