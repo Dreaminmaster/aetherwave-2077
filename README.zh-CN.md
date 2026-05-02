@@ -63,9 +63,15 @@ git clone https://github.com/Dreaminmaster/Worldwave-Radio-2077.git
 cd Worldwave-Radio-2077
 ```
 
-直接用浏览器打开 `index.html` 即可。
+**推荐启动（真实声波示波器）：**
 
-也可以使用本地服务器运行：
+```bash
+python3 serve.py
+```
+
+然后打开 `http://localhost:8080`。内置 CORS 代理，示波器会显示真实的音频波形。
+
+**普通启动（模拟声波）：**
 
 ```bash
 python3 -m http.server 8080
