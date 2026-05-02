@@ -46,7 +46,7 @@ The goal is to make listening feel like operating an old machine from a future t
 
 ### Features
 
-- Global live radio station discovery across **14 countries**: China, USA, Japan, UK, Russia, Australia, New Zealand, South Korea, Canada, France, North Korea, Spain, Switzerland, Greece
+- Global live radio station discovery across **27 countries**: China, USA, Japan, UK, Russia, Australia, New Zealand, South Korea, Canada, France, North Korea, Spain, Switzerland, Greece, Germany, Italy, Netherlands, Sweden, Norway, Denmark, Finland, Austria, Belgium, Ireland, Portugal, Luxembourg, Iceland
 - Cyberpunk-inspired radio console interface
 - Country-based station switching with scrollable selector
 - Tuning slider with simulated frequency feedback
