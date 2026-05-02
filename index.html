@@ -307,19 +307,29 @@
     </div>
 
     <script>
-        // --- 核心变量 ---
+        // ============================================================
+        //  Worldwave Radio 2077 — Dual Mode Engine
+        //  Local (HTTP) → Real waveform via CORS proxy
+        //  Online (HTTPS) → Realistic simulated waveform
+        // ============================================================
+
+        const IS_LOCAL = location.protocol === 'http:' &&
+                        (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+
         let audioCtx;
         let radioAudio = new Audio();
-        let staticNode, staticGain, staticAnalyser, staticSource;
-        let analyser;               // 示波器分析器（接白噪音）
+        let noiseSource, noiseGain, noiseFilter;
+        let analyser;
+        let radioAnalyser;        // 真实分析器（仅本地模式）
+        let radioSource;          // MediaElementSource（仅本地模式）
         let isPowerOn = false;
         let stations = [];
         let currentStationIndex = -1;
         let presets = [null, null, null, null, null];
-        let isPlaying = false;      // 电台是否在播放
-        let isTuning = false;       // 是否正在调频
+        let isPlaying = false;
+        let isTuning = false;
+        let streamState = 'idle'; // idle | searching | playing | error
 
-        // 国名映射：显示名 → API 国名
         const countryMap = {
             'China': 'China',
             'USA': 'The United States Of America',
@@ -328,71 +338,71 @@
             'Russia': 'Russia',
         };
 
-        // --- 音效引擎 (Web Audio API) ---
+        // --- 音频引擎 ---
 
         function initAudio() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-            // 1. 创建白噪音发生器 (Static Noise) — 也作为示波器数据源
-            const bufferSize = audioCtx.sampleRate * 2;
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                data[i] = Math.random() * 2 - 1;
+            // 白噪音（搜台音效 + 模拟模式的数据源）
+            const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+
+            noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = buf;
+            noiseSource.loop = true;
+            noiseGain = audioCtx.createGain();
+            noiseGain.gain.value = 0;
+
+            noiseFilter = audioCtx.createBiquadFilter();
+            noiseFilter.type = 'bandpass';
+            noiseFilter.frequency.value = 1200;
+            noiseFilter.Q.value = 0.7;
+
+            noiseSource.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+
+            if (IS_LOCAL) {
+                // 本地模式：噪音直连输出，分析器等播放时接电台音频
+                noiseGain.connect(audioCtx.destination);
+                radioAnalyser = audioCtx.createAnalyser();
+                radioAnalyser.fftSize = 2048;
+            } else {
+                // 在线模式：噪音接到分析器 → 输出（分析器用来驱动模拟波形）
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 2048;
+                noiseGain.connect(analyser);
+                analyser.connect(audioCtx.destination);
             }
 
-            staticSource = audioCtx.createBufferSource();
-            staticSource.buffer = buffer;
-            staticSource.loop = true;
-            staticGain = audioCtx.createGain();
-            staticGain.gain.value = 0.5; // 初始噪音
-
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = 'bandpass';
-            filter.frequency.value = 1200;
-            filter.Q.value = 0.8;
-
-            staticSource.connect(filter);
-            filter.connect(staticGain);
-
-            // 2. 示波器分析器 — 接在白噪音上（不受 CORS 限制）
-            analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 2048;
-            staticGain.connect(analyser);
-            analyser.connect(audioCtx.destination);
-
-            staticSource.start();
+            noiseSource.start();
         }
 
-        // 生成机械点击声
         function playClickSound() {
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-            
             osc.frequency.setValueAtTime(800, audioCtx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
-            
             gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
-            
             osc.start();
             osc.stop(audioCtx.currentTime + 0.05);
         }
 
-        // --- 交互逻辑 ---
+        // --- 交互 ---
 
         function powerOn() {
             document.getElementById('power-overlay').style.display = 'none';
             isPowerOn = true;
             initAudio();
             playClickSound();
-            fetchStations('China'); // 默认加载
+            fetchStations('China');
             drawVisualizer();
-            
-            // 播放开机声效
+
+            // 开机音效
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain);
@@ -412,40 +422,34 @@
 
             try {
                 const apiCountry = countryMap[countryName] || countryName;
-                const isHttps = location.protocol === 'https:';
-
-                // 用 bycountryexact 搜索（Radio Browser API 国名匹配）
                 let url = `https://de1.api.radio-browser.info/json/stations/bycountryexact/${encodeURIComponent(apiCountry)}?limit=100&order=clickcount&reverse=true`;
                 let resp = await fetch(url);
                 let data = await resp.json();
 
                 if (!data || data.length === 0) {
-                    // 回退：模糊搜索
                     url = `https://de1.api.radio-browser.info/json/stations/bycountry/${encodeURIComponent(apiCountry)}?limit=100&order=clickcount&reverse=true`;
                     resp = await fetch(url);
                     data = await resp.json();
                 }
 
-                // HTTPS 页面必须只用 HTTPS 流（浏览器阻止混合内容）
-                if (isHttps) {
+                if (IS_LOCAL) {
+                    // 本地模式：所有流都可用（代理解决 CORS）
+                    stations = data.filter(s => !!s.url_resolved);
+                } else {
+                    // 在线模式：只取 HTTPS 流
                     stations = data.filter(s => {
                         const u = s.url_resolved || s.url || '';
                         return u.startsWith('https://');
                     });
-
                     if (stations.length === 0) {
-                        // 尝试用 API 的 HTTPS 代理或显示提示
                         stations = data.filter(s => !!s.url_resolved).slice(0, 5);
                         list.innerHTML = `<div style="padding:10px; text-align:center; color:#ff702e;">
-                            ⚠ Few HTTPS streams available for ${countryName}.<br>
-                            <span style="font-size:10px; color:#888;">Some stations may not play on HTTPS.</span>
+                            ⚠ HTTPS streams limited for ${countryName}.<br>
+                            <span style="font-size:10px; color:#888;">Run locally for all stations: python3 serve.py</span>
                         </div>`;
-                        setTimeout(() => renderList(), 2000);
+                        setTimeout(() => renderList(), 2500);
                         return;
                     }
-                } else {
-                    // HTTP 页面可以加载任何流
-                    stations = data.filter(s => !!s.url_resolved);
                 }
 
                 renderList();
@@ -460,8 +464,8 @@
             stations.forEach((s, i) => {
                 const div = document.createElement('div');
                 div.className = `channel-item ${i === currentStationIndex ? 'active' : ''}`;
-                div.innerText = `${(87.5 + (i % 20)).toFixed(1)} FM - ${s.name.substring(0, 20)}`;
-                div.onclick = () => { selectStation(i); };
+                div.innerText = `${(87.5 + (i % 20)).toFixed(1)} FM - ${s.name.substring(0, 24)}`;
+                div.onclick = () => selectStation(i);
                 list.appendChild(div);
             });
         }
@@ -471,138 +475,202 @@
             playClickSound();
             currentStationIndex = index;
             renderList();
+            streamState = 'searching';
             isPlaying = false;
 
             const station = stations[index];
-            const streamUrl = station.url_resolved || station.url;
+            let streamUrl = station.url_resolved || station.url;
 
-            // 停掉旧音频
-            radioAudio.pause();
-            radioAudio.removeAttribute('src');
-            radioAudio.load();
-
-            // 先加大噪音，模拟搜台
-            if (staticGain && audioCtx) {
-                staticGain.gain.cancelScheduledValues(audioCtx.currentTime);
-                staticGain.gain.linearRampToValueAtTime(0.45, audioCtx.currentTime + 0.1);
+            // 本地模式：通过代理加载
+            if (IS_LOCAL) {
+                streamUrl = '/proxy?url=' + encodeURIComponent(streamUrl);
             }
 
-            // 设置新电台（不经过 Web Audio API，直接走 <audio> 元素，避开 CORS）
+            // 停掉旧音频
+            try { radioAudio.pause(); radioAudio.src = ''; } catch(e) {}
+
+            // 搜台阶段：噪音大
+            if (noiseGain) {
+                noiseGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                noiseGain.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 0.1);
+            }
+
+            // 创建新音频
             radioAudio = new Audio();
-            radioAudio.crossOrigin = null;  // 不设 CORS，允许加载 HTTP 流
+            if (IS_LOCAL) {
+                radioAudio.crossOrigin = 'anonymous'; // 代理是同源，需要 CORS 头
+            }
             radioAudio.volume = 1.0;
 
-            // 监听音频事件
+            // 事件监听
             radioAudio.addEventListener('playing', () => {
+                streamState = 'playing';
                 isPlaying = true;
-                if (staticGain && audioCtx) {
-                    staticGain.gain.cancelScheduledValues(audioCtx.currentTime);
-                    staticGain.gain.linearRampToValueAtTime(0.02, audioCtx.currentTime + 0.8);
+                if (noiseGain) {
+                    noiseGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                    noiseGain.gain.linearRampToValueAtTime(0.03, audioCtx.currentTime + 0.6);
+                }
+                // 本地模式：接分析器
+                if (IS_LOCAL && radioAnalyser) {
+                    try {
+                        if (radioSource) { try { radioSource.disconnect(); } catch(e){} }
+                        radioSource = audioCtx.createMediaElementSource(radioAudio);
+                        radioSource.connect(radioAnalyser);
+                        radioAnalyser.connect(audioCtx.destination);
+                    } catch(e) { console.log('Analyser connect error:', e); }
                 }
             });
             radioAudio.addEventListener('error', () => {
+                streamState = 'error';
                 isPlaying = false;
-                if (staticGain && audioCtx) {
-                    staticGain.gain.cancelScheduledValues(audioCtx.currentTime);
-                    staticGain.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 0.3);
+                if (noiseGain) {
+                    noiseGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                    noiseGain.gain.linearRampToValueAtTime(0.45, audioCtx.currentTime + 0.3);
                 }
             });
             radioAudio.addEventListener('waiting', () => {
-                // 缓冲中，稍微加点噪音
-                if (staticGain && audioCtx && isPlaying) {
-                    staticGain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.2);
+                if (streamState === 'playing' && noiseGain) {
+                    noiseGain.gain.setTargetAtTime(0.18, audioCtx.currentTime, 0.2);
                 }
             });
             radioAudio.addEventListener('stalled', () => {
+                streamState = 'error';
                 isPlaying = false;
-                if (staticGain && audioCtx) {
-                    staticGain.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.5);
-                }
+                if (noiseGain) noiseGain.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.5);
             });
 
             radioAudio.src = streamUrl;
 
-            // 延迟播放，模拟调频过程
             setTimeout(() => {
-                radioAudio.play().then(() => {
-                    // playing 事件会处理噪音下降
-                }).catch(e => {
-                    console.log("Play error:", e);
+                radioAudio.play().catch(e => {
+                    console.log('Play error:', e);
+                    streamState = 'error';
                     isPlaying = false;
-                    if (staticGain && audioCtx) {
-                        staticGain.gain.value = 0.5;
-                    }
+                    if (noiseGain) noiseGain.gain.value = 0.5;
                 });
-            }, 600);
+            }, 500);
 
-            // 移动滑块
             const freq = 875 + (index % 20) * 10;
             document.getElementById('tuner').value = freq;
             document.getElementById('freq-text').innerText = (freq/10).toFixed(1);
         }
 
-        // 滑动调频交互
         function onTuning() {
             const val = document.getElementById('tuner').value;
             document.getElementById('freq-text').innerText = (val / 10).toFixed(1);
-
             isTuning = true;
-            // 拖动时：加大噪音
-            if (staticGain && audioCtx) {
-                staticGain.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.05);
-            }
-            // 降低电台音量
+            streamState = 'searching';
+            if (noiseGain) noiseGain.gain.setTargetAtTime(0.55, audioCtx.currentTime, 0.05);
             radioAudio.volume = 0.1;
-
-            if (navigator.vibrate && val % 5 === 0) {
-                navigator.vibrate(5);
-            }
+            if (navigator.vibrate && val % 5 === 0) navigator.vibrate(5);
         }
 
         function onTuneRelease() {
             isTuning = false;
             radioAudio.volume = 1.0;
-
             const val = document.getElementById('tuner').value;
-            const mappedIndex = Math.abs(Math.floor(val / 10)) % Math.max(stations.length, 1);
-            selectStation(mappedIndex);
+            const idx = Math.abs(Math.floor(val / 10)) % Math.max(stations.length, 1);
+            selectStation(idx);
         }
 
         function changeCountry() {
             const sel = document.getElementById('country-select');
-            const name = sel.options[sel.selectedIndex].text;
             playClickSound();
-            fetchStations(name);
+            fetchStations(sel.options[sel.selectedIndex].text);
         }
 
         function handlePreset(slot) {
-            // 简单逻辑：如果有台在播，存入；如果没台，不做；如果有且存了，读取
-            // 为了简化，这里逻辑是：如果当前没存，就存当前；如果存了，就跳过去。
-            // 长按功能在 Web 较难完美实现，这里用 Click+Shift 或者简单的状态切换逻辑
-            
             playClickSound();
             const btn = document.querySelectorAll('.preset-btn')[slot];
-            
-            if (!presets[slot]) {
-                // 存储
-                if (currentStationIndex !== -1) {
-                    presets[slot] = currentStationIndex;
-                    btn.classList.add('saved');
-                    // 模拟机械锁死声
-                }
-            } else {
-                // 读取
+            if (!presets[slot] && currentStationIndex !== -1) {
+                presets[slot] = currentStationIndex;
+                btn.classList.add('saved');
+            } else if (presets[slot] !== null) {
                 selectStation(presets[slot]);
             }
         }
 
-        // --- 视觉绘制 (Oscilloscope) ---
+        // ============================================================
+        //  可视化引擎
+        // ============================================================
+
+        // --- 模拟波形发生器（在线模式） ---
+        // 生成类真实音频的波形数据，不是简单的正弦波
+        let simPhase = 0;
+        let simAmp = 0;
+        let simTarget = 0;
+        let simFreqs = [];     // 多频率成分
+        let simEnv = 0;        // 包络
+
+        function initSimWaveform() {
+            // 随机生成多个频率成分（模拟真实音频的频谱）
+            simFreqs = [];
+            for (let i = 0; i < 6; i++) {
+                simFreqs.push({
+                    freq: 0.3 + Math.random() * 2.5,   // Hz（归一化）
+                    amp: 0.2 + Math.random() * 0.8,
+                    phase: Math.random() * Math.PI * 2,
+                    drift: (Math.random() - 0.5) * 0.02 // 频率漂移
+                });
+            }
+        }
+
+        function generateSimSample(t) {
+            // 根据状态决定目标振幅
+            switch (streamState) {
+                case 'idle':
+                    simTarget = 0.02;  // 几乎平波，带微弱噪点
+                    break;
+                case 'searching':
+                    simTarget = 0.7 + Math.random() * 0.3; // 噪音
+                    break;
+                case 'playing':
+                    // 模拟音频：振幅有节奏地变化（像音乐/语音的包络）
+                    simEnv = 0.4 + 0.3 * Math.sin(t * 0.3) + 0.2 * Math.sin(t * 0.73) + 0.1 * Math.sin(t * 1.7);
+                    simEnv = Math.max(0.15, Math.min(1.0, simEnv));
+                    simTarget = simEnv;
+                    break;
+                case 'error':
+                    simTarget = 0.5 + Math.random() * 0.3; // 断断续续的噪音
+                    break;
+            }
+
+            // 平滑过渡振幅
+            simAmp += (simTarget - simAmp) * 0.08;
+
+            let sample = 0;
+
+            if (streamState === 'searching' || streamState === 'error') {
+                // 纯噪音
+                sample = (Math.random() * 2 - 1) * simAmp;
+            } else if (streamState === 'playing') {
+                // 模拟真实音频：多频率叠加 + 噪声 + 随机突变
+                for (const f of simFreqs) {
+                    f.freq += f.drift;
+                    if (f.freq > 3 || f.freq < 0.2) f.drift *= -1;
+                    sample += Math.sin(t * f.freq + f.phase) * f.amp * simAmp;
+                }
+                // 加随机噪声（模拟真实音频的颗粒感）
+                sample += (Math.random() - 0.5) * 0.15 * simAmp;
+                // 随机出现瞬态（像鼓点/音节）
+                if (Math.random() < 0.003) {
+                    sample += (Math.random() - 0.5) * 2 * simAmp;
+                }
+                sample /= simFreqs.length;
+            } else {
+                // idle: 几乎平坦
+                sample = (Math.random() - 0.5) * 0.03;
+            }
+
+            return sample;
+        }
+
+        // --- Canvas 可视化 ---
 
         function resizeCanvas() {
             const canvas = document.getElementById('visualizer');
-            const parent = canvas.parentElement;
-            canvas.width = parent.clientWidth;
-            canvas.height = parent.clientHeight;
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
         }
 
         function drawVisualizer() {
@@ -610,101 +678,107 @@
             const ctx = canvas.getContext('2d');
             resizeCanvas();
 
-            const bufferLength = analyser.fftSize;
-            const dataArray = new Uint8Array(bufferLength);
+            const W = canvas.width, H = canvas.height, cy = H / 2;
+            const numPoints = Math.min(W, 512); // 采样点数
+
+            // 模拟模式：初始化波形
+            if (!IS_LOCAL) initSimWaveform();
+
+            // 本地模式：数据缓冲
+            let realData = new Uint8Array(radioAnalyser ? radioAnalyser.fftSize : 2048);
+
+            let tick = 0;
 
             function draw() {
                 requestAnimationFrame(draw);
+                tick++;
 
-                const W = canvas.width;
-                const H = canvas.height;
-                const cy = H / 2;
+                const t = tick * 0.05;
 
-                // 拖尾残影
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                // 拖尾
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
                 ctx.fillRect(0, 0, W, H);
 
-                // 网格线（常驻，不影响波形）
+                // 网格
                 ctx.shadowBlur = 0;
-                ctx.strokeStyle = 'rgba(0, 255, 65, 0.05)';
+                ctx.strokeStyle = 'rgba(0, 255, 65, 0.04)';
                 ctx.lineWidth = 1;
                 for (let gy = 0; gy < H; gy += H / 8) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, gy);
-                    ctx.lineTo(W, gy);
-                    ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
                 }
                 for (let gx = 0; gx < W; gx += W / 10) {
-                    ctx.beginPath();
-                    ctx.moveTo(gx, 0);
-                    ctx.lineTo(gx, H);
-                    ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
                 }
-                // 中线
-                ctx.strokeStyle = 'rgba(0, 255, 65, 0.1)';
-                ctx.beginPath();
-                ctx.moveTo(0, cy);
-                ctx.lineTo(W, cy);
-                ctx.stroke();
+                ctx.strokeStyle = 'rgba(0, 255, 65, 0.08)';
+                ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
 
-                // 从分析器拿真实音频数据（白噪音电平）
-                analyser.getByteTimeDomainData(dataArray);
+                // 获取波形数据
+                let samples;
+                if (IS_LOCAL && radioAnalyser && streamState === 'playing') {
+                    // 本地模式：真实音频数据
+                    radioAnalyser.getByteTimeDomainData(realData);
+                    samples = new Float32Array(numPoints);
+                    const step = Math.floor(realData.length / numPoints) || 1;
+                    for (let i = 0; i < numPoints; i++) {
+                        samples[i] = (realData[i * step] - 128) / 128;
+                    }
+                } else {
+                    // 模拟模式 或 本地未连接
+                    samples = new Float32Array(numPoints);
+                    for (let i = 0; i < numPoints; i++) {
+                        samples[i] = generateSimSample(t + i * 0.01);
+                    }
+                }
 
-                // 计算振幅（偏离 128 的程度）
+                // 计算 RMS
                 let rms = 0;
-                for (let i = 0; i < bufferLength; i++) {
-                    const v = (dataArray[i] - 128) / 128;
-                    rms += v * v;
-                }
-                rms = Math.sqrt(rms / bufferLength);
+                for (let i = 0; i < numPoints; i++) rms += samples[i] * samples[i];
+                rms = Math.sqrt(rms / numPoints);
+                const amp = Math.min(rms * 3, 1);
 
-                // 根据振幅动态调节绘制参数
-                const amplitude = Math.min(rms * 4, 1); // 归一化 0~1
-                const lineWidth = 1.5 + amplitude * 2;
-                const glowSize = amplitude * 10;
-
-                ctx.lineWidth = lineWidth;
+                // 绘制主波形
+                ctx.lineWidth = 1.5 + amp * 2.5;
                 ctx.strokeStyle = '#00ff41';
-                ctx.shadowBlur = glowSize;
+                ctx.shadowBlur = amp * 12;
                 ctx.shadowColor = '#00ff41';
-
-                // 画主波形 — 用采样降采样避免密集
                 ctx.beginPath();
-                const step = Math.max(1, Math.floor(bufferLength / W));
-                for (let i = 0; i < bufferLength; i += step) {
-                    const v = dataArray[i] / 128.0;
-                    const y = v * cy;
-                    const x = (i / bufferLength) * W;
+                for (let i = 0; i < numPoints; i++) {
+                    const x = (i / numPoints) * W;
+                    const y = cy - samples[i] * cy * 0.85;
                     if (i === 0) ctx.moveTo(x, y);
                     else ctx.lineTo(x, y);
                 }
                 ctx.stroke();
 
-                // 副波形（低亮度，增加细节感）
+                // 副波形（细节感）
                 ctx.lineWidth = 1;
-                ctx.strokeStyle = `rgba(0, 255, 65, ${0.2 + amplitude * 0.3})`;
+                ctx.strokeStyle = `rgba(0, 255, 65, ${0.15 + amp * 0.25})`;
                 ctx.shadowBlur = 0;
                 ctx.beginPath();
-                for (let i = 0; i < bufferLength; i += step) {
-                    const v = dataArray[i] / 128.0;
-                    const y = v * cy + (Math.random() - 0.5) * 3 * amplitude;
-                    const x = (i / bufferLength) * W;
+                for (let i = 0; i < numPoints; i++) {
+                    const x = (i / numPoints) * W;
+                    const y = cy - samples[i] * cy * 0.85 + (Math.random() - 0.5) * 2 * amp;
                     if (i === 0) ctx.moveTo(x, y);
                     else ctx.lineTo(x, y);
                 }
                 ctx.stroke();
             }
             draw();
-
             window.addEventListener('resize', resizeCanvas);
         }
 
-        // 时钟
+        // --- 时钟 ---
         setInterval(() => {
             const now = new Date();
             document.getElementById('clock').innerText = now.toTimeString().substring(0, 5);
         }, 1000);
 
+        // --- 模式提示 ---
+        if (IS_LOCAL) {
+            console.log('🌊 Worldwave Radio 2077 — LOCAL MODE (real waveform enabled)');
+        } else {
+            console.log('🌊 Worldwave Radio 2077 — ONLINE MODE (simulated waveform)');
+        }
     </script>
 </body>
 </html>
