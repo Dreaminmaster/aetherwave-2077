@@ -11,6 +11,10 @@
 </p>
 
 <p align="center">
+  <img src="./assets/preview.gif" alt="Worldwave Radio 2077 动态预览" width="600">
+</p>
+
+<p align="center">
   <img src="./assets/preview.svg" alt="Worldwave Radio 2077 页面预览" width="900">
 </p>
 
@@ -55,8 +59,8 @@ GitHub Pages 地址：
 克隆仓库：
 
 ```bash
-git clone https://github.com/Dreaminmaster/aetherwave-2077.git
-cd aetherwave-2077
+git clone https://github.com/Dreaminmaster/Worldwave-Radio-2077.git
+cd Worldwave-Radio-2077
 ```
 
 直接用浏览器打开 `index.html` 即可。
