@@ -604,14 +604,19 @@
             radioAudio.volume = currentVolume;
 
             // 事件监听
+            let waitingTimer = null;
+            let stalledTimer = null;
+
             radioAudio.addEventListener('playing', () => {
+                // 清除所有等待定时器
+                clearTimeout(waitingTimer);
+                clearTimeout(stalledTimer);
                 streamState = 'playing';
                 isPlaying = true;
                 if (noiseGain) {
                     noiseGain.gain.cancelScheduledValues(audioCtx.currentTime);
                     noiseGain.gain.linearRampToValueAtTime(0.03, audioCtx.currentTime + 0.6);
                 }
-                // 本地模式：接分析器
                 if (IS_LOCAL && radioAnalyser) {
                     try {
                         if (radioSource) { try { radioSource.disconnect(); } catch(e){} }
@@ -622,6 +627,8 @@
                 }
             });
             radioAudio.addEventListener('error', () => {
+                clearTimeout(waitingTimer);
+                clearTimeout(stalledTimer);
                 streamState = 'error';
                 isPlaying = false;
                 if (noiseGain) {
@@ -630,14 +637,24 @@
                 }
             });
             radioAudio.addEventListener('waiting', () => {
-                if (streamState === 'playing' && noiseGain) {
-                    noiseGain.gain.setTargetAtTime(0.18, audioCtx.currentTime, 0.2);
+                // 短暂缓冲（< 3秒）不加噪音，给不稳定电台一个宽容期
+                clearTimeout(waitingTimer);
+                if (streamState === 'playing') {
+                    waitingTimer = setTimeout(() => {
+                        if (streamState === 'playing' && noiseGain) {
+                            noiseGain.gain.setTargetAtTime(0.12, audioCtx.currentTime, 0.3);
+                        }
+                    }, 3000);
                 }
             });
             radioAudio.addEventListener('stalled', () => {
-                streamState = 'error';
-                isPlaying = false;
-                if (noiseGain) noiseGain.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.5);
+                // 给 5 秒恢复时间，之后才判定失败
+                clearTimeout(stalledTimer);
+                stalledTimer = setTimeout(() => {
+                    streamState = 'error';
+                    isPlaying = false;
+                    if (noiseGain) noiseGain.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.5);
+                }, 5000);
             });
 
             radioAudio.src = streamUrl;
