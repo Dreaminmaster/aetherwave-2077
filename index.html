@@ -28,8 +28,6 @@
             flex-direction: column;
             overflow: hidden;
             user-select: none;
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
         }
 
         /* --- 布局 --- */
@@ -37,8 +35,10 @@
             display: flex;
             justify-content: space-between;
             padding: 15px;
+            padding-top: calc(15px + env(safe-area-inset-top, 0px));
             background: #111;
             border-bottom: 1px solid #333;
+            flex-shrink: 0;
         }
 
         .main-display {
@@ -239,6 +239,9 @@
             align-items: center;
             flex-direction: column;
             color: var(--accent-green);
+            padding-top: env(safe-area-inset-top, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            box-sizing: border-box;
         }
         .power-btn {
             font-size: 40px;
@@ -377,13 +380,11 @@
 
         <div class="knob-section">
             <div class="knob-wrapper" style="text-align:center;">
-                <div class="knob" id="vol-knob" style="transform: rotate(0deg);"
-                     ontouchstart="knobStart(event,'vol')" onmousedown="knobStart(event,'vol')"></div>
+                <div class="knob" id="vol-knob" style="transform: rotate(0deg);"></div>
                 <span class="knob-label">VOLUME</span>
             </div>
             <div class="knob-wrapper" style="text-align:center;">
-                <div class="knob" id="fine-knob" style="transform: rotate(0deg);"
-                     ontouchstart="knobStart(event,'fine')" onmousedown="knobStart(event,'fine')"></div>
+                <div class="knob" id="fine-knob" style="transform: rotate(0deg);"></div>
                 <span class="knob-label">FINE TUNE</span>
             </div>
         </div>
@@ -721,10 +722,11 @@
 
         // --- 旋钮交互 ---
 
-        let knobDrag = null; // {type, cx, cy, lastAngle, deg}
+        let knobDrag = null;
 
         function knobStart(e, type) {
             e.preventDefault();
+            e.stopPropagation();
             const el = document.getElementById(type + '-knob');
             const rect = el.getBoundingClientRect();
             const cx = rect.left + rect.width / 2;
@@ -792,6 +794,21 @@
             document.addEventListener('touchmove', onMove, {passive: false});
             document.addEventListener('touchend', onEnd);
         }
+
+        // 绑定旋钮事件
+        function initKnobs() {
+            const volKnob = document.getElementById('vol-knob');
+            const fineKnob = document.getElementById('fine-knob');
+            if (volKnob) {
+                volKnob.addEventListener('mousedown', (e) => knobStart(e, 'vol'));
+                volKnob.addEventListener('touchstart', (e) => knobStart(e, 'vol'), {passive: false});
+            }
+            if (fineKnob) {
+                fineKnob.addEventListener('mousedown', (e) => knobStart(e, 'fine'));
+                fineKnob.addEventListener('touchstart', (e) => knobStart(e, 'fine'), {passive: false});
+            }
+        }
+        initKnobs();
 
         // 初始化旋钮状态（读取 CSS 默认值）
 
