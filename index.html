@@ -199,6 +199,14 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            cursor: pointer;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: box-shadow 0.15s;
+        }
+        .knob:active {
+            box-shadow: var(--shadow-inset), 0 0 8px rgba(255,112,46,0.3);
         }
         .knob::after {
             content: '';
@@ -366,11 +374,13 @@
 
         <div class="knob-section">
             <div class="knob-wrapper" style="text-align:center;">
-                <div class="knob" id="vol-knob" style="transform: rotate(-135deg);"></div>
+                <div class="knob" id="vol-knob" style="transform: rotate(-135deg);"
+                     ontouchstart="knobStart(event,'vol')" onmousedown="knobStart(event,'vol')"></div>
                 <span class="knob-label">VOLUME</span>
             </div>
             <div class="knob-wrapper" style="text-align:center;">
-                <div class="knob" id="fine-knob" style="transform: rotate(0deg);"></div>
+                <div class="knob" id="fine-knob" style="transform: rotate(0deg);"
+                     ontouchstart="knobStart(event,'fine')" onmousedown="knobStart(event,'fine')"></div>
                 <span class="knob-label">FINE TUNE</span>
             </div>
         </div>
@@ -704,6 +714,71 @@
         initCountryList();
 
         function changeCountry() {} // unused now
+
+        // --- 旋钮交互 ---
+
+        let knobDrag = null; // {type: 'vol'|'fine', startAngle, startDeg}
+
+        function knobStart(e, type) {
+            e.preventDefault();
+            const el = document.getElementById(type + '-knob');
+            const rect = el.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const startAngle = Math.atan2(clientY - cy, clientX - cx);
+            const currentDeg = type === 'vol' ? -135 : 0; // 从初始角度开始
+
+            knobDrag = { type, cx, cy, startAngle, el };
+
+            const onMove = (ev) => {
+                if (!knobDrag) return;
+                ev.preventDefault();
+                const mx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+                const my = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                const angle = Math.atan2(my - knobDrag.cy, mx - knobDrag.cx);
+                let delta = (angle - knobDrag.startAngle) * (180 / Math.PI);
+                // 归一化到 -180~180
+                if (delta > 180) delta -= 360;
+                if (delta < -180) delta += 360;
+
+                // 限制旋转范围 -135° ~ 135°
+                let newDeg = (knobDrag.startDeg || 0) + delta;
+                newDeg = Math.max(-135, Math.min(135, newDeg));
+                knobDrag.el.style.transform = `rotate(${newDeg}deg)`;
+                knobDrag.currentDeg = newDeg;
+
+                // 映射到实际值
+                if (knobDrag.type === 'vol') {
+                    // -135° → 0, 135° → 1
+                    const vol = (newDeg + 135) / 270;
+                    radioAudio.volume = Math.max(0, Math.min(1, vol));
+                } else {
+                    // fine tune: -135° ~ 135° → 微调 playbackRate
+                    // 中间 0° = 正常速度
+                    const rate = 1 + (newDeg / 135) * 0.3; // 0.7x ~ 1.3x
+                    try { radioAudio.playbackRate = rate; } catch(e){}
+                }
+            };
+
+            const onEnd = () => {
+                if (knobDrag) knobDrag.startDeg = knobDrag.currentDeg || 0;
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onEnd);
+                document.removeEventListener('touchmove', onMove);
+                document.removeEventListener('touchend', onEnd);
+            };
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onEnd);
+            document.addEventListener('touchmove', onMove, {passive: false});
+            document.addEventListener('touchend', onEnd);
+        }
+
+        // 初始化旋钮状态
+        knobDrag = { el: document.getElementById('vol-knob'), type: 'vol', startAngle: 0, startDeg: -135 };
 
         function handlePreset(slot) {
             playClickSound();
