@@ -242,12 +242,80 @@
             100% { opacity: 0.5; }
         }
 
-        select {
+        /* Country selector */
+        .country-wrap {
+            position: relative;
+        }
+        .country-btn {
             background: #111;
             color: var(--accent-green);
             border: 1px solid #333;
-            padding: 5px;
+            padding: 5px 10px;
             font-family: inherit;
+            font-size: 14px;
+            cursor: pointer;
+            min-width: 100px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .country-panel {
+            position: absolute;
+            top: calc(100% + 4px);
+            right: 0;
+            background: #111;
+            border: 1px solid #444;
+            border-radius: 6px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            z-index: 50;
+            display: none;
+            overflow: hidden;
+        }
+        .country-panel.open {
+            display: block;
+            animation: fadeIn 0.15s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .country-scroller {
+            max-height: 180px;   /* ~5 items */
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .country-scroller::-webkit-scrollbar {
+            width: 4px;
+        }
+        .country-scroller::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 2px;
+        }
+        .country-item {
+            padding: 8px 14px;
+            font-family: inherit;
+            font-size: 14px;
+            color: #ccc;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.1s;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .country-item:active, .country-item:hover {
+            background: #222;
+        }
+        .country-item.active {
+            color: var(--accent-green);
+            background: rgba(0, 255, 65, 0.08);
+        }
+        .country-backdrop {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 40;
+            display: none;
+        }
+        .country-backdrop.open {
+            display: block;
         }
     </style>
 </head>
@@ -260,23 +328,16 @@
 
     <div class="header">
         <div style="color:var(--accent-green)">WORLD RADIO // <span id="clock">00:00</span></div>
-        <select id="country-select" onchange="changeCountry()">
-            <option value="CN">China</option>
-            <option value="US">USA</option>
-            <option value="JP">Japan</option>
-            <option value="GB">UK</option>
-            <option value="RU">Russia</option>
-            <option value="AU">Australia</option>
-            <option value="NZ">New Zealand</option>
-            <option value="KR">South Korea</option>
-            <option value="CA">Canada</option>
-            <option value="FR">France</option>
-            <option value="KP">North Korea</option>
-            <option value="ES">Spain</option>
-            <option value="CH">Switzerland</option>
-            <option value="GR">Greece</option>
-        </select>
+        <div class="country-wrap">
+            <div class="country-btn" id="country-btn" onclick="countryOpen()">
+                <span id="country-label">China</span> <span style="opacity:0.5">▾</span>
+            </div>
+            <div class="country-panel" id="country-panel">
+                <div class="country-scroller" id="country-scroller"></div>
+            </div>
+        </div>
     </div>
+    <div class="country-backdrop" id="country-backdrop" onclick="countryClose()"></div>
 
     <div class="main-display">
         <div class="channel-list" id="station-list">
@@ -591,11 +652,58 @@
             selectStation(idx);
         }
 
-        function changeCountry() {
-            const sel = document.getElementById('country-select');
-            playClickSound();
-            fetchStations(sel.options[sel.selectedIndex].text);
+        // --- 国家选择器 ---
+
+        const countries = [
+            {code:'CN', name:'China'}, {code:'US', name:'USA'}, {code:'JP', name:'Japan'},
+            {code:'GB', name:'UK'}, {code:'RU', name:'Russia'}, {code:'AU', name:'Australia'},
+            {code:'NZ', name:'New Zealand'}, {code:'KR', name:'South Korea'},
+            {code:'CA', name:'Canada'}, {code:'FR', name:'France'},
+            {code:'KP', name:'North Korea'}, {code:'ES', name:'Spain'},
+            {code:'CH', name:'Switzerland'}, {code:'GR', name:'Greece'}
+        ];
+
+        let currentCountry = 'China';
+
+        function initCountryList() {
+            const scroller = document.getElementById('country-scroller');
+            scroller.innerHTML = '';
+            countries.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'country-item' + (c.name === currentCountry ? ' active' : '');
+                div.textContent = c.name;
+                div.onclick = () => countrySelect(c.name);
+                scroller.appendChild(div);
+            });
         }
+
+        function countryOpen() {
+            document.getElementById('country-panel').classList.add('open');
+            document.getElementById('country-backdrop').classList.add('open');
+            // 滚动到当前选中项
+            const items = document.querySelectorAll('.country-item.active');
+            if (items.length) items[0].scrollIntoView({block: 'center'});
+        }
+
+        function countryClose() {
+            document.getElementById('country-panel').classList.remove('open');
+            document.getElementById('country-backdrop').classList.remove('open');
+        }
+
+        function countrySelect(name) {
+            currentCountry = name;
+            document.getElementById('country-label').textContent = name;
+            document.querySelectorAll('.country-item').forEach(el => {
+                el.classList.toggle('active', el.textContent === name);
+            });
+            countryClose();
+            playClickSound();
+            fetchStations(name);
+        }
+
+        initCountryList();
+
+        function changeCountry() {} // unused now
 
         function handlePreset(slot) {
             playClickSound();
