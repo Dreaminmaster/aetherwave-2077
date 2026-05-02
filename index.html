@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#1a1a1a">
-    <title>Aetherwave 2077</title>
+    <title>World Radio 2077</title>
     <link rel="manifest" href="manifest.json">
     <style>
         :root {
@@ -255,17 +255,22 @@
 
     <div id="power-overlay">
         <div class="power-btn" onclick="powerOn()">⏻ POWER ON</div>
-        <p style="margin-top:20px; font-size:12px; opacity:0.6;">AETHERWAVE 2077 SYSTEM</p>
+        <p style="margin-top:20px; font-size:12px; opacity:0.6;">WORLD RADIO 2077 SYSTEM</p>
     </div>
 
     <div class="header">
-        <div style="color:var(--accent-green)">AETHERWAVE // <span id="clock">00:00</span></div>
+        <div style="color:var(--accent-green)">WORLD RADIO // <span id="clock">00:00</span></div>
         <select id="country-select" onchange="changeCountry()">
             <option value="CN">China</option>
             <option value="US">USA</option>
             <option value="JP">Japan</option>
             <option value="GB">UK</option>
             <option value="RU">Russia</option>
+            <option value="AU">Australia</option>
+            <option value="NZ">New Zealand</option>
+            <option value="KR">South Korea</option>
+            <option value="CA">Canada</option>
+            <option value="FR">France</option>
         </select>
     </div>
 
@@ -336,6 +341,11 @@
             'Japan': 'Japan',
             'UK': 'The United Kingdom Of Great Britain And Northern Ireland',
             'Russia': 'Russia',
+            'Australia': 'Australia',
+            'New Zealand': 'New Zealand',
+            'South Korea': 'The Republic Of Korea',
+            'Canada': 'Canada',
+            'France': 'France',
         };
 
         // --- 音频引擎 ---
