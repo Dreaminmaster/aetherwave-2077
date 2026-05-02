@@ -717,8 +717,10 @@
         function onTuneRelease() {
             isTuning = false;
             radioAudio.volume = currentVolume;
-            const val = document.getElementById('tuner').value;
-            const idx = Math.abs(Math.floor(val / 10)) % Math.max(stations.length, 1);
+            const val = parseInt(document.getElementById('tuner').value);
+            // 线性映射：875~1080 → 0~stations.length-1
+            const ratio = (val - 875) / (1080 - 875);
+            const idx = Math.round(ratio * Math.max(stations.length - 1, 0));
             selectStation(idx, true);
         }
 
@@ -876,31 +878,25 @@
         function initTuner() {
             const tuner = document.getElementById('tuner');
             if (!tuner) return;
-            let isDragging = false;
+            let releaseTimer = null;
 
             tuner.addEventListener('input', () => {
-                isDragging = true;
                 onTuning();
             });
 
-            tuner.addEventListener('change', () => {
-                // 保存当前滑块位置
-                const savedVal = tuner.value;
-                onTuneRelease();
-                // 确保滑块停在原位
-                tuner.value = savedVal;
-                isDragging = false;
-            });
-
-            // 手机上用 touchend 作为松手信号
-            tuner.addEventListener('touchend', () => {
-                if (isDragging) {
+            // 统一松手处理，防重复触发
+            function handleRelease() {
+                clearTimeout(releaseTimer);
+                releaseTimer = setTimeout(() => {
                     const savedVal = tuner.value;
                     onTuneRelease();
-                    tuner.value = savedVal;
-                    isDragging = false;
-                }
-            });
+                    // 确保滑块停在原位
+                    requestAnimationFrame(() => { tuner.value = savedVal; });
+                }, 50);
+            }
+
+            tuner.addEventListener('change', handleRelease);
+            tuner.addEventListener('touchend', handleRelease);
         }
         initTuner();
 
