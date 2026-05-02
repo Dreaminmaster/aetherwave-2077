@@ -92,19 +92,23 @@ git clone https://github.com/Dreaminmaster/Worldwave-Radio-2077.git
 cd Worldwave-Radio-2077
 ```
 
-Open `index.html` directly in a browser.
+**Quick start (with real oscilloscope waveform):**
 
-For a better experience, run it through a local server:
+```bash
+python3 serve.py
+```
+
+Then open `http://localhost:8080`
+
+The local server includes a CORS proxy that enables the oscilloscope to display real audio waveforms from radio streams.
+
+**Basic (simulated waveform):**
 
 ```bash
 python3 -m http.server 8080
 ```
 
-Then open:
-
-```text
-http://localhost:8080
-```
+Or open `index.html` directly. The oscilloscope shows a realistic simulated waveform.
 
 ---
 
