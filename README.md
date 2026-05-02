@@ -17,6 +17,10 @@
 </p>
 
 <p align="center">
+  <img src="./assets/preview.gif" alt="Worldwave Radio 2077 animated preview" width="600">
+</p>
+
+<p align="center">
   <img src="./assets/mobile-actual-preview-v3-wave.svg" alt="Worldwave Radio 2077 actual mobile interface preview" width="300">
 </p>
 
@@ -84,8 +88,8 @@ No frontend framework is required.
 Clone the repository:
 
 ```bash
-git clone https://github.com/Dreaminmaster/aetherwave-2077.git
-cd aetherwave-2077
+git clone https://github.com/Dreaminmaster/Worldwave-Radio-2077.git
+cd Worldwave-Radio-2077
 ```
 
 Open `index.html` directly in a browser.
