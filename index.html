@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#1a1a1a">
     <title>World Radio 2077</title>
     <link rel="manifest" href="manifest.json">
@@ -23,10 +23,13 @@
             color: #ccc;
             margin: 0;
             height: 100vh;
+            height: 100dvh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
             user-select: none;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
         /* --- 布局 --- */
@@ -718,7 +721,7 @@
 
         // --- 旋钮交互 ---
 
-        let knobDrag = null; // {type: 'vol'|'fine', startAngle, startDeg}
+        let knobDrag = null; // {type, cx, cy, lastAngle, deg}
 
         function knobStart(e, type) {
             e.preventDefault();
@@ -729,54 +732,55 @@
 
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            const startAngle = Math.atan2(clientY - cy, clientX - cx);
+            const angle = Math.atan2(clientY - cy, clientX - cx) * (180 / Math.PI);
 
             // 读取当前旋转角度
             const transform = el.style.transform;
             const match = transform.match(/rotate\(([-\d.]+)deg\)/);
             const currentDeg = match ? parseFloat(match[1]) : 0;
 
-            knobDrag = { type, cx, cy, startAngle, el, startDeg: currentDeg };
+            knobDrag = { type, cx, cy, lastAngle: angle, deg: currentDeg, el };
 
             const onMove = (ev) => {
                 if (!knobDrag) return;
                 ev.preventDefault();
                 const mx = ev.touches ? ev.touches[0].clientX : ev.clientX;
                 const my = ev.touches ? ev.touches[0].clientY : ev.clientY;
-                const angle = Math.atan2(my - knobDrag.cy, mx - knobDrag.cx);
-                let delta = (angle - knobDrag.startAngle) * (180 / Math.PI);
-                // 归一化到 -180~180
+                const angle = Math.atan2(my - knobDrag.cy, mx - knobDrag.cx) * (180 / Math.PI);
+
+                // 增量式：计算这次和上次的角度差
+                let delta = angle - knobDrag.lastAngle;
+                // 归一化到 -180~180 避免跳变
                 if (delta > 180) delta -= 360;
                 if (delta < -180) delta += 360;
 
-                // 限制旋转范围 -135° ~ 135°
-                let newDeg = (knobDrag.startDeg || 0) + delta;
+                // 限制范围 -135° ~ 135°
+                let newDeg = knobDrag.deg + delta;
                 newDeg = Math.max(-135, Math.min(135, newDeg));
-                knobDrag.el.style.transform = `rotate(${newDeg}deg)`;
-                knobDrag.currentDeg = newDeg;
+                // 只用实际发生的位移
+                const actualDelta = newDeg - knobDrag.deg;
+                knobDrag.deg = newDeg;
+                knobDrag.lastAngle = angle;
+
+                el.style.transform = `rotate(${newDeg}deg)`;
 
                 // 映射到实际值
                 if (knobDrag.type === 'vol') {
-                    // -135° → 0, 135° → 1
                     const vol = (newDeg + 135) / 270;
                     currentVolume = Math.max(0, Math.min(1, vol));
                     radioAudio.volume = currentVolume;
                 } else {
-                    // fine tune: 控制噪声滤波器频率
-                    // 模拟调频时"频率偏移"的听感
                     if (noiseFilter) {
-                        // -135° → 200Hz, 0° → 1200Hz, 135° → 4000Hz
                         const freq = 1200 * Math.pow(2, newDeg / 135);
-                        noiseFilter.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.05);
+                        noiseFilter.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.03);
                     }
-                    // 也微调电台音量（模拟信号强弱变化）
                     const signalMod = 1.0 - Math.abs(newDeg) / 135 * 0.3;
-                    radioAudio.volume = currentVolume * signalMod;
+                    radioAudio.volume = currentVolume * Math.max(0.3, signalMod);
                 }
             };
 
             const onEnd = () => {
-                if (knobDrag) knobDrag.startDeg = knobDrag.currentDeg || 0;
+                knobDrag = null;
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onEnd);
                 document.removeEventListener('touchmove', onMove);
