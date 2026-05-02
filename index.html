@@ -310,14 +310,14 @@
         // --- 核心变量 ---
         let audioCtx;
         let radioAudio = new Audio();
-        let staticNode, staticGain; // 白噪音
-        let analyser;
-        let analyserSource;         // 保存 MediaElementSource 引用
+        let staticNode, staticGain, staticAnalyser, staticSource;
+        let analyser;               // 示波器分析器（接白噪音）
         let isPowerOn = false;
         let stations = [];
         let currentStationIndex = -1;
         let presets = [null, null, null, null, null];
-        let audioConnected = false;  // 标记音频是否成功连接到分析器
+        let isPlaying = false;      // 电台是否在播放
+        let isTuning = false;       // 是否正在调频
 
         // 国名映射：显示名 → API 国名
         const countryMap = {
@@ -333,20 +333,7 @@
         function initAudio() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-            // 1. 设置无线电音频分析器 (Visualizer)
-            try {
-                analyserSource = audioCtx.createMediaElementSource(radioAudio);
-                analyser = audioCtx.createAnalyser();
-                analyser.fftSize = 2048;
-                analyserSource.connect(analyser);
-                analyser.connect(audioCtx.destination);
-            } catch (e) {
-                // 如果已经创建过 source，忽略
-                analyser = audioCtx.createAnalyser();
-                analyser.fftSize = 2048;
-            }
-
-            // 2. 创建白噪音发生器 (Static Noise)
+            // 1. 创建白噪音发生器 (Static Noise) — 也作为示波器数据源
             const bufferSize = audioCtx.sampleRate * 2;
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
@@ -354,20 +341,27 @@
                 data[i] = Math.random() * 2 - 1;
             }
 
-            staticNode = audioCtx.createBufferSource();
-            staticNode.buffer = buffer;
-            staticNode.loop = true;
+            staticSource = audioCtx.createBufferSource();
+            staticSource.buffer = buffer;
+            staticSource.loop = true;
             staticGain = audioCtx.createGain();
-            staticGain.gain.value = 0;
+            staticGain.gain.value = 0.5; // 初始噪音
 
             const filter = audioCtx.createBiquadFilter();
             filter.type = 'bandpass';
-            filter.frequency.value = 1000;
+            filter.frequency.value = 1200;
+            filter.Q.value = 0.8;
 
-            staticNode.connect(filter);
+            staticSource.connect(filter);
             filter.connect(staticGain);
-            staticGain.connect(audioCtx.destination);
-            staticNode.start();
+
+            // 2. 示波器分析器 — 接在白噪音上（不受 CORS 限制）
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 2048;
+            staticGain.connect(analyser);
+            analyser.connect(audioCtx.destination);
+
+            staticSource.start();
         }
 
         // 生成机械点击声
@@ -417,27 +411,43 @@
             list.innerHTML = '<div style="padding:10px;">SCANNING ETHER...</div>';
 
             try {
-                // 优先 HTTPS 流，避免混合内容被浏览器拦截
                 const apiCountry = countryMap[countryName] || countryName;
                 const isHttps = location.protocol === 'https:';
-                let url = `https://de1.api.radio-browser.info/json/stations/bycountrycodeexact/${encodeURIComponent(apiCountry)}?limit=50&order=clickcount&reverse=true`;
-                // 如果无法用 countrycode，回退到 name
+
+                // 用 bycountryexact 搜索（Radio Browser API 国名匹配）
+                let url = `https://de1.api.radio-browser.info/json/stations/bycountryexact/${encodeURIComponent(apiCountry)}?limit=100&order=clickcount&reverse=true`;
                 let resp = await fetch(url);
                 let data = await resp.json();
+
                 if (!data || data.length === 0) {
-                    url = `https://de1.api.radio-browser.info/json/stations/bycountryexact/${encodeURIComponent(apiCountry)}?limit=50&order=clickcount&reverse=true`;
+                    // 回退：模糊搜索
+                    url = `https://de1.api.radio-browser.info/json/stations/bycountry/${encodeURIComponent(apiCountry)}?limit=100&order=clickcount&reverse=true`;
                     resp = await fetch(url);
                     data = await resp.json();
                 }
-                stations = data.filter(s => {
-                    if (!s.url_resolved) return false;
-                    if (isHttps && !s.url_resolved.startsWith('https://')) return false;
-                    return true;
-                });
-                // 如果 HTTPS 过滤后太少，放宽限制（尝试 HTTP）
-                if (stations.length < 3) {
+
+                // HTTPS 页面必须只用 HTTPS 流（浏览器阻止混合内容）
+                if (isHttps) {
+                    stations = data.filter(s => {
+                        const u = s.url_resolved || s.url || '';
+                        return u.startsWith('https://');
+                    });
+
+                    if (stations.length === 0) {
+                        // 尝试用 API 的 HTTPS 代理或显示提示
+                        stations = data.filter(s => !!s.url_resolved).slice(0, 5);
+                        list.innerHTML = `<div style="padding:10px; text-align:center; color:#ff702e;">
+                            ⚠ Few HTTPS streams available for ${countryName}.<br>
+                            <span style="font-size:10px; color:#888;">Some stations may not play on HTTPS.</span>
+                        </div>`;
+                        setTimeout(() => renderList(), 2000);
+                        return;
+                    }
+                } else {
+                    // HTTP 页面可以加载任何流
                     stations = data.filter(s => !!s.url_resolved);
                 }
+
                 renderList();
             } catch (e) {
                 list.innerHTML = '<div style="padding:10px; text-align:center;">SIGNAL LOST.</div>';
@@ -461,58 +471,100 @@
             playClickSound();
             currentStationIndex = index;
             renderList();
+            isPlaying = false;
 
-            // 模拟调频过程：先响噪音，再出声音
+            const station = stations[index];
+            const streamUrl = station.url_resolved || station.url;
+
+            // 停掉旧音频
             radioAudio.pause();
-            if (staticGain) {
+            radioAudio.removeAttribute('src');
+            radioAudio.load();
+
+            // 先加大噪音，模拟搜台
+            if (staticGain && audioCtx) {
                 staticGain.gain.cancelScheduledValues(audioCtx.currentTime);
-                staticGain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime);
+                staticGain.gain.linearRampToValueAtTime(0.45, audioCtx.currentTime + 0.1);
             }
 
-            radioAudio.src = stations[index].url_resolved;
-            radioAudio.crossOrigin = "anonymous";
+            // 设置新电台（不经过 Web Audio API，直接走 <audio> 元素，避开 CORS）
+            radioAudio = new Audio();
+            radioAudio.crossOrigin = null;  // 不设 CORS，允许加载 HTTP 流
             radioAudio.volume = 1.0;
 
-            // 延迟一点播放，模拟搜台
+            // 监听音频事件
+            radioAudio.addEventListener('playing', () => {
+                isPlaying = true;
+                if (staticGain && audioCtx) {
+                    staticGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                    staticGain.gain.linearRampToValueAtTime(0.02, audioCtx.currentTime + 0.8);
+                }
+            });
+            radioAudio.addEventListener('error', () => {
+                isPlaying = false;
+                if (staticGain && audioCtx) {
+                    staticGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                    staticGain.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 0.3);
+                }
+            });
+            radioAudio.addEventListener('waiting', () => {
+                // 缓冲中，稍微加点噪音
+                if (staticGain && audioCtx && isPlaying) {
+                    staticGain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.2);
+                }
+            });
+            radioAudio.addEventListener('stalled', () => {
+                isPlaying = false;
+                if (staticGain && audioCtx) {
+                    staticGain.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.5);
+                }
+            });
+
+            radioAudio.src = streamUrl;
+
+            // 延迟播放，模拟调频过程
             setTimeout(() => {
                 radioAudio.play().then(() => {
-                    if (staticGain) staticGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
-                    audioConnected = true;
+                    // playing 事件会处理噪音下降
                 }).catch(e => {
-                    console.log("Stream error", e);
-                    if (staticGain) staticGain.gain.value = 0.5;
+                    console.log("Play error:", e);
+                    isPlaying = false;
+                    if (staticGain && audioCtx) {
+                        staticGain.gain.value = 0.5;
+                    }
                 });
-            }, 500);
+            }, 600);
 
-            // 移动滑块视觉
+            // 移动滑块
             const freq = 875 + (index % 20) * 10;
             document.getElementById('tuner').value = freq;
             document.getElementById('freq-text').innerText = (freq/10).toFixed(1);
         }
 
-        // 滑动变阻器交互
+        // 滑动调频交互
         function onTuning() {
             const val = document.getElementById('tuner').value;
             document.getElementById('freq-text').innerText = (val / 10).toFixed(1);
-            
-            // 拖动时：静音电台，播放巨大的电流声
+
+            isTuning = true;
+            // 拖动时：加大噪音
+            if (staticGain && audioCtx) {
+                staticGain.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.05);
+            }
+            // 降低电台音量
             radioAudio.volume = 0.1;
-            staticGain.gain.setTargetAtTime(0.4, audioCtx.currentTime, 0.1);
-            
-            // 震动反馈 (Haptic)
+
             if (navigator.vibrate && val % 5 === 0) {
-                navigator.vibrate(5); 
+                navigator.vibrate(5);
             }
         }
 
         function onTuneRelease() {
-            // 松手时：找到最近的电台
+            isTuning = false;
             radioAudio.volume = 1.0;
-            staticGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.5);
-            
-            // 简单的算法：随机映射到列表中的某一个（模拟不同频率对应不同台）
+
             const val = document.getElementById('tuner').value;
-            const mappedIndex = Math.floor(val / 10) % stations.length;
+            const mappedIndex = Math.abs(Math.floor(val / 10)) % Math.max(stations.length, 1);
             selectStation(mappedIndex);
         }
 
@@ -560,82 +612,21 @@
 
             const bufferLength = analyser.fftSize;
             const dataArray = new Uint8Array(bufferLength);
-            let animFrame = 0;
 
             function draw() {
                 requestAnimationFrame(draw);
-                animFrame++;
 
                 const W = canvas.width;
                 const H = canvas.height;
+                const cy = H / 2;
 
-                // 拖尾残影效果
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+                // 拖尾残影
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
                 ctx.fillRect(0, 0, W, H);
 
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = '#00ff41';
-                ctx.shadowBlur = 8;
-                ctx.shadowColor = '#00ff41';
-
-                // 尝试从分析器拿数据
-                analyser.getByteTimeDomainData(dataArray);
-
-                // 检查是否全部为 128（静音/无数据）
-                let allSilent = true;
-                for (let i = 0; i < bufferLength; i++) {
-                    if (dataArray[i] !== 128) { allSilent = false; break; }
-                }
-
-                if (allSilent) {
-                    // 生成模拟波形：让用户知道示波器在工作
-                    ctx.beginPath();
-                    const sliceWidth = W / bufferLength;
-                    let x = 0;
-                    for (let i = 0; i < bufferLength; i++) {
-                        const t = (i / bufferLength) * Math.PI * 4;
-                        const noise = Math.random() * 2;
-                        const y = H / 2 + Math.sin(t + animFrame * 0.03) * (H * 0.35) + noise;
-                        if (i === 0) ctx.moveTo(x, y);
-                        else ctx.lineTo(x, y);
-                        x += sliceWidth;
-                    }
-                    ctx.stroke();
-
-                    // 第二条细线（白噪音干扰效果）
-                    ctx.lineWidth = 1;
-                    ctx.strokeStyle = 'rgba(0, 255, 65, 0.3)';
-                    ctx.shadowBlur = 0;
-                    ctx.beginPath();
-                    x = 0;
-                    for (let i = 0; i < bufferLength; i++) {
-                        const t = (i / bufferLength) * Math.PI * 2;
-                        const noise = (Math.random() - 0.5) * H * 0.2;
-                        const y = H / 2 + Math.cos(t + animFrame * 0.05) * (H * 0.15) + noise;
-                        if (i === 0) ctx.moveTo(x, y);
-                        else ctx.lineTo(x, y);
-                        x += sliceWidth;
-                    }
-                    ctx.stroke();
-                } else {
-                    // 有真实音频数据，画出来
-                    ctx.beginPath();
-                    const sliceWidth = W / bufferLength;
-                    let x = 0;
-                    for (let i = 0; i < bufferLength; i++) {
-                        const v = dataArray[i] / 128.0;
-                        const y = v * H / 2;
-                        if (i === 0) ctx.moveTo(x, y);
-                        else ctx.lineTo(x, y);
-                        x += sliceWidth;
-                    }
-                    ctx.lineTo(W, H / 2);
-                    ctx.stroke();
-                }
-
-                // 网格线效果
+                // 网格线（常驻，不影响波形）
                 ctx.shadowBlur = 0;
-                ctx.strokeStyle = 'rgba(0, 255, 65, 0.06)';
+                ctx.strokeStyle = 'rgba(0, 255, 65, 0.05)';
                 ctx.lineWidth = 1;
                 for (let gy = 0; gy < H; gy += H / 8) {
                     ctx.beginPath();
@@ -649,10 +640,62 @@
                     ctx.lineTo(gx, H);
                     ctx.stroke();
                 }
+                // 中线
+                ctx.strokeStyle = 'rgba(0, 255, 65, 0.1)';
+                ctx.beginPath();
+                ctx.moveTo(0, cy);
+                ctx.lineTo(W, cy);
+                ctx.stroke();
+
+                // 从分析器拿真实音频数据（白噪音电平）
+                analyser.getByteTimeDomainData(dataArray);
+
+                // 计算振幅（偏离 128 的程度）
+                let rms = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    const v = (dataArray[i] - 128) / 128;
+                    rms += v * v;
+                }
+                rms = Math.sqrt(rms / bufferLength);
+
+                // 根据振幅动态调节绘制参数
+                const amplitude = Math.min(rms * 4, 1); // 归一化 0~1
+                const lineWidth = 1.5 + amplitude * 2;
+                const glowSize = amplitude * 10;
+
+                ctx.lineWidth = lineWidth;
+                ctx.strokeStyle = '#00ff41';
+                ctx.shadowBlur = glowSize;
+                ctx.shadowColor = '#00ff41';
+
+                // 画主波形 — 用采样降采样避免密集
+                ctx.beginPath();
+                const step = Math.max(1, Math.floor(bufferLength / W));
+                for (let i = 0; i < bufferLength; i += step) {
+                    const v = dataArray[i] / 128.0;
+                    const y = v * cy;
+                    const x = (i / bufferLength) * W;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+                // 副波形（低亮度，增加细节感）
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = `rgba(0, 255, 65, ${0.2 + amplitude * 0.3})`;
+                ctx.shadowBlur = 0;
+                ctx.beginPath();
+                for (let i = 0; i < bufferLength; i += step) {
+                    const v = dataArray[i] / 128.0;
+                    const y = v * cy + (Math.random() - 0.5) * 3 * amplitude;
+                    const x = (i / bufferLength) * W;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
             }
             draw();
 
-            // 窗口大小变化时重设 canvas
             window.addEventListener('resize', resizeCanvas);
         }
 
