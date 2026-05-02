@@ -374,7 +374,7 @@
 
         <div class="knob-section">
             <div class="knob-wrapper" style="text-align:center;">
-                <div class="knob" id="vol-knob" style="transform: rotate(-135deg);"
+                <div class="knob" id="vol-knob" style="transform: rotate(0deg);"
                      ontouchstart="knobStart(event,'vol')" onmousedown="knobStart(event,'vol')"></div>
                 <span class="knob-label">VOLUME</span>
             </div>
@@ -408,7 +408,8 @@
         let presets = [null, null, null, null, null];
         let isPlaying = false;
         let isTuning = false;
-        let streamState = 'idle'; // idle | searching | playing | error
+        let streamState = 'idle';
+        let currentVolume = 1.0;   // 旋钮控制的音量 // idle | searching | playing | error
 
         const countryMap = {
             'China': 'China',
@@ -587,9 +588,9 @@
             // 创建新音频
             radioAudio = new Audio();
             if (IS_LOCAL) {
-                radioAudio.crossOrigin = 'anonymous'; // 代理是同源，需要 CORS 头
+                radioAudio.crossOrigin = 'anonymous';
             }
-            radioAudio.volume = 1.0;
+            radioAudio.volume = currentVolume;
 
             // 事件监听
             radioAudio.addEventListener('playing', () => {
@@ -656,7 +657,7 @@
 
         function onTuneRelease() {
             isTuning = false;
-            radioAudio.volume = 1.0;
+            radioAudio.volume = currentVolume;
             const val = document.getElementById('tuner').value;
             const idx = Math.abs(Math.floor(val / 10)) % Math.max(stations.length, 1);
             selectStation(idx);
@@ -729,9 +730,13 @@
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             const startAngle = Math.atan2(clientY - cy, clientX - cx);
-            const currentDeg = type === 'vol' ? -135 : 0; // 从初始角度开始
 
-            knobDrag = { type, cx, cy, startAngle, el };
+            // 读取当前旋转角度
+            const transform = el.style.transform;
+            const match = transform.match(/rotate\(([-\d.]+)deg\)/);
+            const currentDeg = match ? parseFloat(match[1]) : 0;
+
+            knobDrag = { type, cx, cy, startAngle, el, startDeg: currentDeg };
 
             const onMove = (ev) => {
                 if (!knobDrag) return;
@@ -754,12 +759,19 @@
                 if (knobDrag.type === 'vol') {
                     // -135° → 0, 135° → 1
                     const vol = (newDeg + 135) / 270;
-                    radioAudio.volume = Math.max(0, Math.min(1, vol));
+                    currentVolume = Math.max(0, Math.min(1, vol));
+                    radioAudio.volume = currentVolume;
                 } else {
-                    // fine tune: -135° ~ 135° → 微调 playbackRate
-                    // 中间 0° = 正常速度
-                    const rate = 1 + (newDeg / 135) * 0.3; // 0.7x ~ 1.3x
-                    try { radioAudio.playbackRate = rate; } catch(e){}
+                    // fine tune: 控制噪声滤波器频率
+                    // 模拟调频时"频率偏移"的听感
+                    if (noiseFilter) {
+                        // -135° → 200Hz, 0° → 1200Hz, 135° → 4000Hz
+                        const freq = 1200 * Math.pow(2, newDeg / 135);
+                        noiseFilter.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.05);
+                    }
+                    // 也微调电台音量（模拟信号强弱变化）
+                    const signalMod = 1.0 - Math.abs(newDeg) / 135 * 0.3;
+                    radioAudio.volume = currentVolume * signalMod;
                 }
             };
 
@@ -777,8 +789,7 @@
             document.addEventListener('touchend', onEnd);
         }
 
-        // 初始化旋钮状态
-        knobDrag = { el: document.getElementById('vol-knob'), type: 'vol', startAngle: 0, startDeg: -135 };
+        // 初始化旋钮状态（读取 CSS 默认值）
 
         function handlePreset(slot) {
             playClickSound();
