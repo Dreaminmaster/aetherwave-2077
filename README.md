@@ -46,15 +46,16 @@ The goal is to make listening feel like operating an old machine from a future t
 
 ### Features
 
-- Global live radio station discovery
+- Global live radio station discovery across **14 countries**: China, USA, Japan, UK, Russia, Australia, New Zealand, South Korea, Canada, France, North Korea, Spain, Switzerland, Greece
 - Cyberpunk-inspired radio console interface
-- Country-based station switching
+- Country-based station switching with scrollable selector
 - Tuning slider with simulated frequency feedback
 - Preset station buttons
-- Web Audio API sound effects
-- Static noise simulation
-- Oscilloscope-style audio visualizer
-- CRT scanline overlay
+- **Volume knob** — drag to rotate, controls audio volume
+- **Fine tune knob** — drag to rotate, adjusts playback speed (simulates frequency micro-tuning)
+- Web Audio API sound effects (click, static, boot-up)
+- Oscilloscope visualizer with CRT scanline overlay
+- **Dual waveform modes**: real audio-driven (local) / realistic simulated (online)
 - Mobile-friendly single-page layout
 - PWA-ready manifest structure
 
