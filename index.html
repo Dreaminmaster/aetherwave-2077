@@ -585,7 +585,7 @@
             });
         }
 
-        function selectStation(index) {
+        function selectStation(index, keepSlider) {
             if (index < 0 || index >= stations.length) return;
             playClickSound();
             currentStationIndex = index;
@@ -698,9 +698,11 @@
                 });
             }, 500);
 
-            const freq = 875 + (index % 20) * 10;
-            document.getElementById('tuner').value = freq;
-            document.getElementById('freq-text').innerText = (freq/10).toFixed(1);
+            if (!keepSlider) {
+                const freq = 875 + (index % 20) * 10;
+                document.getElementById('tuner').value = freq;
+                document.getElementById('freq-text').innerText = (freq/10).toFixed(1);
+            }
         }
 
         function onTuning() {
@@ -718,7 +720,7 @@
             radioAudio.volume = currentVolume;
             const val = document.getElementById('tuner').value;
             const idx = Math.abs(Math.floor(val / 10)) % Math.max(stations.length, 1);
-            selectStation(idx);
+            selectStation(idx, true);
         }
 
         // --- 国家选择器 ---
