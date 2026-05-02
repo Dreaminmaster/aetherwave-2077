@@ -381,8 +381,7 @@
 
         <div class="tuner-container">
             <div class="freq-display"><span id="freq-text">87.5</span> MHz</div>
-            <input type="range" id="tuner" min="875" max="1080" value="875" 
-                   oninput="onTuning()" onchange="onTuneRelease()">
+            <input type="range" id="tuner" min="875" max="1080" value="875">
         </div>
 
         <div class="knob-section">
@@ -872,6 +871,38 @@
             }
         }
         initKnobs();
+
+        // 绑定调频滑块事件
+        function initTuner() {
+            const tuner = document.getElementById('tuner');
+            if (!tuner) return;
+            let isDragging = false;
+
+            tuner.addEventListener('input', () => {
+                isDragging = true;
+                onTuning();
+            });
+
+            tuner.addEventListener('change', () => {
+                // 保存当前滑块位置
+                const savedVal = tuner.value;
+                onTuneRelease();
+                // 确保滑块停在原位
+                tuner.value = savedVal;
+                isDragging = false;
+            });
+
+            // 手机上用 touchend 作为松手信号
+            tuner.addEventListener('touchend', () => {
+                if (isDragging) {
+                    const savedVal = tuner.value;
+                    onTuneRelease();
+                    tuner.value = savedVal;
+                    isDragging = false;
+                }
+            });
+        }
+        initTuner();
 
         // 初始化旋钮状态（读取 CSS 默认值）
 
